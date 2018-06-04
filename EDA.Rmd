@@ -1,0 +1,602 @@
+---
+title: "EDA_project"
+author: "RanjanK"
+date: "January 9, 2018"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+EDA_Project by Ranjan Kumar
+========================================================
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r echo=FALSE, Load_the_Packages}
+library(ggplot2)
+library(gridExtra)
+library(GGally)
+library(dplyr)
+```
+
+```{r echo=FALSE, Load_the_Data}
+df <- read.csv('wineQualityReds.csv')
+
+```
+
+The dataset wineQualityReds contains 1,599 red wines with 11 variables on the chemical properties of the wine. At least 3 wine experts rated the quality of each wine, providing a rating between 0 (very bad) and 10 (very excellent).
+Our goal here is to identify the chemical properties that influence the quality of red wines.
+
+# Univariate Plots Section
+
+Let's have a look at the basic statistics and structure of our dataset.
+
+```{r echo=FALSE, Univariate_data}
+str(df)
+```
+
+```{r echo=FALSE}
+summary(df)
+```
+
+Looking at the summary of the variables, we can deduce that sulphates, chlorides, residual.sugar and total.sulfur.dioxide have outliers.
+
+Let's check, do we have any missing value.
+
+```{r echo=FALSE}
+any(is.na(df))
+```
+
+That is awesome! We don't have any missing value.
+Let's have a closer look at how the quality of wine is distributed.
+
+```{r echo=FALSE}
+table(df$quality)
+mean(df$quality)
+ggplot(aes(x=factor(quality)), data=df)+
+     geom_bar() +
+      xlab("quality (scale 0-10)")
+      ggtitle("Distribution of wines' quality")
+
+```
+Lets have a closer look at the data:
+```{r}
+table(df$quality)
+mean(df$quality)
+```
+Okay! So nearly, 95% of the red wines have a quality rating of 5, 6 or 7.
+And the average rating of the red wines is around 5.6
+
+Now, let's have a look at the distribution of the independent variables. 
+
+```{r echo=FALSE}
+
+print("Distrbution of independent variables")
+
+p1 = ggplot(aes(x=fixed.acidity), data=df)+
+    geom_histogram(color='white') + 
+    xlab("fixed.acidity (g/dm^3)")
+p2 = ggplot(aes(x=volatile.acidity), data=df)+
+    geom_histogram(color='white') +
+    xlab("volatile.acidity (g/dm^3)")
+p3 = ggplot(aes(x=citric.acid), data=df)+
+    geom_histogram(color='white') +
+    xlab("citric.acid (g/dm^3)")
+p4 = ggplot(aes(x=residual.sugar), data=df)+
+    geom_histogram(color='white') +
+    xlab("residual.sugar (g/dm^3)")
+p5 = ggplot(aes(x=chlorides), data=df)+
+    geom_histogram(color='white') +
+    xlab("chlorides (g/dm^3)")
+p6 = ggplot(aes(x=free.sulfur.dioxide), data=df)+
+    geom_histogram(color='white') +
+    xlab("sulfur.dioxide (g/dm^3)")
+p7 = ggplot(aes(x=total.sulfur.dioxide), data=df)+
+    geom_histogram(color='white') +
+    xlab("total.sulfur.dioxide (g/dm^3)")
+p8 = ggplot(aes(x=density), data=df)+
+    geom_histogram(color='white') +
+    xlab("density (g/cm^3)")
+p9 = ggplot(aes(x=pH), data=df)+
+    geom_histogram(color='white') +
+    xlab("pH")
+p10 = ggplot(aes(x=sulphates), data=df)+
+    geom_histogram(color='white') +
+    xlab("sulphates (g/dm^3)")
+p11 = ggplot(aes(x=alcohol), data=df)+
+    geom_histogram(color='white') +
+    xlab("alcholo (% by volume)")
+
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11) 
+```
+
+Our suscpicion was correct. Out of the eleven plots above; residual.sugar, chlorides, total.sulfur.dioxide and sulphates appear to have long tails. lets create a set of new histograms on log10 scale for these variables.
+
+
+```{r echo=FALSE}
+
+p1 = ggplot(aes(x=residual.sugar), binwidth=0.01, data=df)+
+    geom_histogram(color='white')+
+    scale_x_log10() +
+    scale_x_continuous(limits=c(0,8), breaks=seq(0,8,1)) +
+    xlab("log10(residual.sugar (g/dm^3))")
+
+p2 = ggplot(aes(x=chlorides), binwidth = 0.001, data=df)+
+    geom_histogram(color='white') +
+    scale_x_log10() + 
+    scale_x_continuous(limits=c(0,0.6), breaks=seq(0,0.6,0.1)) +
+    xlab("log10(chlorides (g/dm^3))")
+
+p3 = ggplot(aes(x=total.sulfur.dioxide), binwidth = 0.001, data=df)+
+    geom_histogram(color='white') +
+    scale_x_log10() +
+    scale_x_continuous(limits=c(0,300), breaks=seq(0,300,50)) +
+    xlab("log10(total.sulfur.dioxide (g/dm^3))")
+
+p4 = ggplot(aes(x=sulphates), binwidth = 0.001, data=df)+
+    geom_histogram(color='white') +
+    scale_x_log10() +
+    scale_x_continuous(limits=c(0,2), breaks=seq(0,2,0.5)) +
+    xlab("log10(sulphates (g/dm^3))")
+
+grid.arrange(p1,p2,p3,p4)
+
+```
+
+Lets trim the top 2.5% data and observe.
+
+```{r echo=FALSE}
+
+p1 = ggplot(aes(x=residual.sugar), binwidth=0.01, 
+            data=subset(df, residual.sugar<=quantile(residual.sugar,0.975)))+
+    geom_histogram(color='white')+
+    scale_x_log10() +
+    scale_x_continuous(limits=c(0,8), breaks=seq(0,8,1)) +
+     xlab("log10(residual.sugar (g/dm^3))")
+
+p2 = ggplot(aes(x=chlorides), binwidth = 0.001, 
+            data=subset(df, chlorides<=quantile(chlorides,0.975)))+
+    geom_histogram(color='white') +
+    scale_x_log10() +
+    scale_x_continuous(limits=c(0,0.3), breaks=seq(0,0.3,0.1)) +
+     xlab("log10(chlorides (g/dm^3))")
+
+p3 = ggplot(aes(x=total.sulfur.dioxide), binwidth = 0.001, 
+            data=subset(df, 
+                total.sulfur.dioxide<=quantile(total.sulfur.dioxide,0.975)))+
+    geom_histogram(color='white') +
+    scale_x_log10() +
+    scale_x_continuous(limits=c(0,150), breaks=seq(0,150,50)) +
+     xlab("log10(total.sulfur.dioxide (g/dm^3))")
+
+p4 = ggplot(aes(x=sulphates), binwidth = 0.001, 
+            data=subset(df, sulphates<=quantile(sulphates,0.975)))+
+    geom_histogram(color='white') +
+    scale_x_log10() +
+    scale_x_continuous(limits=c(0,1.5), breaks=seq(0,1.5,0.5)) +
+     xlab("log10(sulphates (g/dm^3))")
+
+grid.arrange(p1,p2,p3,p4)
+
+```
+
+Now, we can say that all the variables, baring total.sulfur.dioxide, are almost normally distributed.
+
+# Univariate Analysis
+
+We can see that all the 11 independent variables are decimals and the dependent variable wine quality is integer. 
+
+Looking at the summary of the variables, we can deduce that sulphates, chlorides, residual.sugar and total.sulfur.dioxide have outliers.
+
+It is interesting to know that 95% of the data have rating 5, 6 or 7.
+We don't have any missing value and that is great.
+
+I did not create any new variable, because, I felt that all the variables represent a chemical properties/parameter that are difficult to interpret and most likely might not be amenable to  any combination. However, I did create a few categorical variables that didn't prove to be of much use later.
+
+My suscpicion was correct. Out of the eleven plots above; residual.sugar, chlorides, total.sulfur.dioxide and sulphates appear to have long tails. I created a set of new histograms on log10 scale for these variables, and further, I trimmed the top 2.5% of the data. Now, all the variables have a normal or almost normal distribution.
+
+# Bivariate Plots Section
+
+Before, we dive deep, let's have a casual look at the 
+relationship between the each pair of the variables.
+
+```{r echo=FALSE, Bivariate_Plots, fig.height=15, fig.width=15}
+df1 <- subset(df, select = -c(X))
+
+ggpairs(df1, title="Matrix Plot")
+  
+  
+```
+
+It appears that if we had quality as a factor rather than numeric it would give a better insight in the data.
+
+```{r echo=FALSE, fig.height=15, fig.width=15}
+df1$quality = factor(df1$quality)
+ggpairs(df1, title = "Matrix Plot")
+```
+
+There appear to have significant corelation between a bunch of variables. Let's explore them further.
+
+**Scatter plot of highly corelated variables**
+
+```{r echo=FALSE}
+p1 = ggplot(aes(x=citric.acid, y=fixed.acidity), data=df)+
+    geom_point(alpha=0.1, color='red') +
+    geom_smooth(data=df, method='auto') +
+     scale_x_continuous(limits = c(0,0.75)) +
+    ylab("fixed.acidity (g/dm^3)") + 
+    xlab("citric.acid (g/dm^3)")
+p2 = ggplot(aes(x=density, y=fixed.acidity), data=df)+
+    geom_point(alpha=0.1, color='red') +
+    geom_smooth(data=df, method='auto') +
+    ylab("fixed.acidity (g/dm^3)") + 
+    xlab("density (g/cm^3)")
+p3 = ggplot(aes(x=volatile.acidity, y=citric.acid), data=df)+
+    geom_point(alpha=0.1, color='red') +
+    geom_smooth(data=df, method='auto') + 
+     scale_x_continuous(limits = c(0,1.2)) +
+    xlab("volatile.acidity (g/dm^3)") + 
+    ylab("citric.acid (g/dm^3)")
+p4 = ggplot(aes(x=total.sulfur.dioxide, y=free.sulfur.dioxide), data=df)+
+    geom_point(alpha=0.1, color='red') +
+    geom_smooth(data=df, method='auto') +
+     scale_x_continuous(limits = c(0,150)) +
+    xlab("total.sulfur.dioxide (mg/dm^3)") + 
+    ylab("free.sulfur.dioxide (mg/dm^3)")
+
+grid.arrange(p1,p2,p3,p4)
+
+```
+
+Now, we must closely analyse how does each of the features vary with the quality of wine.
+
+**Relation between features and quality of wine**
+
+```{r echo=FALSE}
+
+p1 = ggplot(aes(y=fixed.acidity, x=factor(quality)), data=df)+
+    geom_boxplot()
+p2 = ggplot(aes(y=volatile.acidity, x=factor(quality)), data=df)+
+    geom_boxplot()
+p3 = ggplot(aes(y=citric.acid, x=factor(quality)), data=df)+
+    geom_boxplot()
+p4 = ggplot(aes(y=residual.sugar, x=factor(quality)), data=df)+
+    geom_boxplot()
+p5 = ggplot(aes(y=chlorides, x=factor(quality)), data=df)+
+    geom_boxplot()
+p6 = ggplot(aes(y=free.sulfur.dioxide, x=factor(quality)), data=df)+
+    geom_boxplot()
+p7 = ggplot(aes(y=total.sulfur.dioxide, x=factor(quality)), data=df)+
+    geom_boxplot()
+p8 = ggplot(aes(y=density, x=factor(quality)), data=df)+
+    geom_boxplot()
+p9 = ggplot(aes(y=pH, x=factor(quality)), data=df)+
+    geom_boxplot()
+p10 = ggplot(aes(y=sulphates, x=factor(quality)), data=df)+
+    geom_boxplot()
+p11 = ggplot(aes(y=alcohol, x=factor(quality)), data=df)+
+    geom_boxplot()
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11)
+
+```
+
+We can confidently say that the quality of wines
+on an average increases with fixed.acidity, citric.acid
+sulphates and alcohol.
+
+And the quality of wines decraeses with volatile.acidity
+density and pH.
+
+Further, residual sugar, chlorides and total.sulfur.dioxide
+need further investigation.
+
+```{r echo=FALSE}
+
+ggplot(aes(y=residual.sugar, x=factor(quality)), data=df)+
+    geom_boxplot() +
+    coord_cartesian(ylim = c(1, 4)) +
+    stat_summary(fun.y=mean, geom = 'point', shape=4) + 
+    ylab("residual.sugar (g/dm^3)") +
+    ggtitle("residual.sugar")
+
+```
+
+Still, we can't say anything confidently. 
+Let's trim some data and observe.
+
+
+```{r echo=FALSE, Univariate_Plots}
+ggplot(aes(y=residual.sugar, x=factor(quality)), 
+       data=subset(df, residual.sugar<=quantile(residual.sugar, 0.95)))+
+    geom_boxplot() +
+    coord_cartesian(ylim = c(1, 4)) +
+    stat_summary(fun.y=mean, geom = 'point', shape=4) + 
+    ylab("residual.sugar (g/dm^3)") +
+    ggtitle("residual.sugar (truncated data)")
+```
+
+Still we can't say confidently, how does residual.sugar affects the quality of wine. It appears residual.sugar alone is inconsequential in determining the quality of wines as revealed by the following codes.
+
+```{r echo=FALSE}
+
+by(df$residual.sugar, df$quality, summary)
+
+```
+
+
+```{r echo=FALSE}
+
+ggplot(aes(y=chlorides, x=factor(quality)), data=df)+
+    geom_boxplot() +
+    coord_cartesian(ylim = c(0, 0.2)) +
+    stat_summary(fun.y=mean, geom = 'point', shape=4) +
+    ylab("clorides (g/dm^3)") +
+    ggtitle("chlorides")
+```
+
+Now, it is crystal clear that as chloride decreases, quality of wines improve on an average.
+
+```{r echo=FALSE}
+ggplot(aes(y=total.sulfur.dioxide, x=factor(quality)), data=df)+
+    geom_boxplot() +
+    coord_cartesian(ylim = c(0, 100)) +
+    stat_summary(fun.y=mean, geom = 'point', shape=4) +
+    ylab("total.sulfur.dioxide (mg/dm^3)") +
+    ggtitle("total.sulfur.dioxide")
+```
+
+At low total.sulfur.dioxide quality of wine is both very good and very bad, but as it increases to a maximum value, quality of wine averages at the rating 5. 
+
+```{r}
+by(df$total.sulfur.dioxide, df$quality, summary)
+```
+We can see that with respect to quality, mean total.silfur.dioxide first increases and then decreases.
+
+Let's explore how variables are distributed and how do they affect quality.
+
+**Matrix plot of historgrams of variables facted by quality(1)**
+```{r echo=FALSE, Multivariate_Plots}
+p1 = ggplot(aes(x=fixed.acidity, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() +
+    xlab("fixed.acidity(g/dm^3)")
+p2 = ggplot(aes(x=volatile.acidity, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() + 
+    xlab("volatile.acidity(g/dm^3)")
+
+p3 = ggplot(aes(x=citric.acid, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() +
+    xlab("citric.acid(g/dm^3)")
+
+p4 = ggplot(aes(x=residual.sugar, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() +
+    scale_x_log10() +
+    xlab("log10(residual.sugar(g/dm^3)")
+
+
+grid.arrange(p1,p2,p3,p4)
+
+```
+
+**Matrix plot of historgrams of variables facted by quality(2)**
+
+```{r}
+p5 = ggplot(aes(x=chlorides, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() +
+    scale_x_log10() +
+    xlab("log10(chlorides(g/dm^3))")
+
+p6 = ggplot(aes(x=free.sulfur.dioxide, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() +
+    xlab("log10(free.sulfur.dioxide(mg/dm^3)")
+
+
+p7 = ggplot(aes(x=total.sulfur.dioxide, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() +
+    scale_x_log10() +
+    xlab("log10(total.sulfur.dioxide(mg/dm^3)")
+
+p8 = ggplot(aes(x=density, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() +
+    xlab("density(g/Cm^3")
+grid.arrange(p5,p6,p7,p8, ncol=2)
+
+```
+
+**Matrix plot of historgrams of variables facted by quality(3)**
+
+```{r}
+p9 = ggplot(aes(x=pH, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() +
+    xlab("pH")
+
+p10 = ggplot(aes(x=sulphates, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() +
+    scale_x_log10() + 
+    xlab("log10(sulphates(g/dm^3)")
+
+
+p11 = ggplot(aes(x=alcohol, fill=factor(quality)), data=df)+
+    geom_histogram(color='white') +
+    scale_fill_brewer() + 
+    theme_dark() +
+    xlab("alcohol(% by volume)")
+grid.arrange(p9, p10, p11, ncol=2)
+
+```
+
+# Bivariate Analysis
+
+We can see there is quite significant co-relation among:
+citric.acid vs fixed.acidity, density vs fixed.acidity, volatile.acidity vs citric.acid and total.sulfur.dioxide vs free.sulfur dioxide.
+
+We can confidently say that the quality of wines
+on an average increases with fixed.acidity, citric.acid,
+sulphates and alcohol.
+
+And the quality of wines decraeses with volatile.acidity
+density and pH.
+
+On a closer analysis, we conclude that residual sugar is inconsiquential to the quality of wines, rather it is almost constant across the spectrum. While, the quality of wine improves as chlorides content decrease and total.sulfur.dioxide content shows an erratic behavior in influenicng the quality of wines. For example, at low total.sulfur.dioxide quality of wine has been observed to be both very good and very bad. 
+
+The strongest relationship was obtained for volatile.acidity, citric.acid and alcohol.
+As, alcohol and citric.acid increase quality of wines improve rapidly, while as the volatile.acidity increases quality of wine deteriorates rapidly.
+
+# Multivariate Plots Section
+
+**Corelation matrix facted by quality**
+
+```{r echo=FALSE}
+p1 = ggplot(aes(x=citric.acid, y=fixed.acidity), data=df)+
+    geom_point(alpha=0.1, aes(color=factor(quality))) +
+    scale_color_brewer(type = 'div') +
+    scale_x_continuous(limits = c(0,0.75)) +
+    ylab("fixed.acidity (g/dm^3)") + 
+    xlab("citric.acid (g/dm^3)")
+p2 = ggplot(aes(x=density, y=fixed.acidity), data=df)+
+    geom_point(alpha=0.1, aes(color=factor(quality))) +
+    scale_color_brewer(type = 'div') +
+    ylab("fixed.acidity (g/dm^3)") + 
+    xlab("density (g/cm^3)")
+p3 = ggplot(aes(x=volatile.acidity, y=citric.acid), data=df)+
+    geom_point(alpha=0.1, aes(color=factor(quality))) +
+    scale_color_brewer(type = 'div') +
+     scale_x_continuous(limits = c(0,1.2)) +
+    xlab("volatile.acidity (g/dm^3)") + 
+    ylab("citric.acid (g/dm^3)")
+p4 = ggplot(aes(x=total.sulfur.dioxide, y=free.sulfur.dioxide), data=df)+
+    geom_point(alpha=0.1, aes(color=factor(quality))) +
+    scale_color_brewer(type = 'div') +
+     scale_x_continuous(limits = c(0,150)) +
+    xlab("total.sulfur.dioxide (mg/dm^3)") + 
+    ylab("free.sulfur.dioxide (mg/dm^3)")
+
+grid.arrange(p1,p2,p3,p4)
+
+```
+
+As we can see there are a bunch of variables that have great effect on the quality of wine. We have just one categorical variable over here. Lets try to create a categorical variable citric.acid.factor and observe how does it relate to other variables vis a vis the quality of wines.    
+
+```{r echo=FALSE}
+cond1 = (df$citric.acid <= 0.09) 
+cond2 = ifelse(df$citric.acid <= 0.42, 'medium', 'high')
+df$citric.acid.factor = as.factor(ifelse(cond1, 'low', cond2))
+table(df$citric.acid.factor)
+```
+
+** scatter plot matrix faceted by citric.acid.factor**
+
+```{r echo=FALSE}
+df_fixed.acidity = df %>%
+    group_by(fixed.acidity, citric.acid.factor) %>%
+    summarise(mean_quality = mean(quality),
+              n=n()) %>%
+    ungroup()
+p1 = ggplot(aes(x=fixed.acidity, y=mean_quality), data=df_fixed.acidity) +
+    geom_point(aes(color=citric.acid.factor)) +
+    xlab("fixed.acidity(g/dm^3)")
+
+
+df_pH = df %>%
+    group_by(pH, citric.acid.factor) %>%
+    summarise(mean_quality = mean(quality),
+             n=n())  %>%
+    ungroup()
+p9 = ggplot(aes(x=pH, y=mean_quality), data=df_pH) +
+    geom_point(aes(color=citric.acid.factor))
+
+
+df_alcohol = df %>%
+    group_by(alcohol, citric.acid.factor) %>%
+    summarise(mean_quality = mean(quality),
+             n=n())  %>%
+    ungroup()
+p11 = ggplot(aes(x=alcohol, y=mean_quality), data=df_alcohol) +
+    geom_point(aes(color=citric.acid.factor)) +
+    xlab("alcohol (% by vol)")
+
+
+grid.arrange(p1,p9,p11, ncol=2)
+```
+The new factor variable doesn't offer any meaningful insight into the dataset.
+
+# Multivariate Analysis
+
+For the strongly corelated features, there is a clear discernable chunk of points depicting high quality in each of these plots.
+
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+ggplot(aes(y=citric.acid, x=factor(quality)), data=df) +
+    geom_boxplot() +
+    stat_summary(fun.y=mean, geom = 'point', shape=4) +
+    ylab("citric.acid (g/dm^3)") +
+    ggtitle("citric.acid vs quality of wine ") 
+
+```
+
+### Description One
+
+This plot beautifully shows the efect of citric.acid on the quality of wine. As the concentration of citric.acid increases, it enhances the quality of wine, this is almost a directly proportional relationship. 
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+ggplot(aes(y=total.sulfur.dioxide, x=factor(quality)), data=df) +
+    geom_boxplot() +
+    coord_cartesian(ylim = c(0, 100)) +
+    stat_summary(fun.y=mean, geom = 'point', shape=4) +
+    ylab("total.sulfuric.dioxide (mg/dm^3)") +
+    ggtitle("total.sulfur.dioxide vs quality")
+```
+
+### Description Two
+
+total.sulfur.dioxide presents a very intresting scenario. It is very difficult to determine, how does it affects the quality of wine or is there any effect at all? total.sulfur.dioxide content shows an erratic behavior in influenicng the quality of wines. For example, at low total.sulfur.dioxide concentration quality of wine has been observed to be both very good and very bad. 
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+ggplot(aes(x=density, y=fixed.acidity, color=quality), data=df)+
+    geom_point(aes(color=factor(quality))) +
+    scale_color_brewer(type = 'div') +
+    xlab("density (g/cm^3)") +
+    ylab("fixed.acidity(g/dm^3)") +
+    ggtitle('scatter plot of fixed.acidity vs density faceted by factor(quality)')
+    
+```
+
+### Description Three
+This plot beautifully captures the relationship between most corelated variables and how do they impact the quality.
+The upper chunk of the cluster of data points have on an average better quality of wine.
+fixed.acidity in general increases with desnsity, but for a certain density, if the fixed.acidity increases it enhances the quality of the wine.
+
+------
+
+# Reflection
+
+As this is basically a classification problem. We have only the quality as a categorical variable, I tried creating a few factor variables and create new dataframes using dplyr package and tried to observe how a certain variable contribute to quality, when facted by some categorical variable.
+But, I could not find any observable pattern or any new information that could help understand the data better. Most likely, because, for variables with a long range, particularly a long tail, just three levels like, 'low', 'medium' and 'high', based on 1st and 3rd quartile, is too broad a categorization compromising the benefit of a new variable.
+Further, due to lack of the domain knowledge, it is difficult to create a regionable no of levels may 6 or 8 or 15, whatever. 
+
+
